@@ -11,7 +11,8 @@ class Player:
         self.LookAheadDepth = LookAheadDepth
     
             
-
+def PlayGame(board, p1, p2):
+    return 0
 
 def main():
     return 0
