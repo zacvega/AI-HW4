@@ -7,6 +7,7 @@ class Board:
     # def CheckForWinner(self):
 
     # def PlacePiece(self):
+    
 
 class Player:
     def __init__(self, FirstMove, LookAheadDepth):
