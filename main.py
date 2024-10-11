@@ -67,6 +67,9 @@ class Board:
     def CheckForWinner(self, player, loc):
         row = loc[0]
         col = loc[1]
+
+        if(len(self.eSquares)==0):
+            return True, None, None
         # Check horizontal
         # print("horizontal")
         # print("range", range(max(1, col - 3), min(col + 1, self.columns)))
@@ -121,9 +124,8 @@ class Board:
                     # print("check")
                     if(all(self.locStatus(i) == player for i in downList)):
                         return True, player, downList
-
-
-        return False
+        
+        return False, None, None
 
         
     def placableSpaces(self):
@@ -434,13 +436,9 @@ class Board:
         
         return OE3x,OE3o,CE3x,CE3o,  OE2x,OE2o,CE2x,CE2o
 
-
-
-
-
     def Heuristic(self, player):
         values = self.Heuristic_values()
-        print(values)
+        #print(values)
         if player == 'x':
             # print(200* values[0]) 
             # print(-80 *   values[1])
@@ -505,19 +503,24 @@ class Player:
         self.LookAheadDepth = LookAheadDepth
         self.piece = piece
 
-    def Move(self, board):
-        result = MinimaxDecision(board, self)
+    def Move(self, board, MaxLayer):
+        result = MinimaxDecision(board, self, 0, MaxLayer)
         board.PlacePiece(self.piece, result)
         return result
 
 def MinimaxDecision(board, player, CurrentDepth, MaxLayer):
-    placeableSpaces = board.placeableSpaces()
+
+    placableSpaces = board.placableSpaces()
     Results = []
     Spaces = []
-    for space in placeableSpaces:
+    #print(placableSpaces)
+    for space in placableSpaces:
         newBoard = copy.deepcopy(board)
         newBoard.PlacePiece(player,space)
-        if player == 'x':
+        IsEnd, EndResult, downList = newBoard.CheckForWinner(player,(3,3))
+        if(IsEnd and EndResult == player):
+            return space
+        if player.piece == 'x':
             Results.append(MinValue(newBoard,'o',CurrentDepth+1,MaxLayer))
             Spaces.append(space)
         else:
@@ -528,40 +531,51 @@ def MinimaxDecision(board, player, CurrentDepth, MaxLayer):
     return Spaces[index]
 
 def MaxValue(board, player, CurrentDepth, MaxDepth):
-    if CurrentDepth == MaxDepth:
-        return board.heuristic(player)
-    IsEnd, EndResult = board.CheckForWinner(player,space)
-    if(IsEnd):
+    IsEnd, EndResult, downList = board.CheckForWinner(player,(3,3))
+    if(IsEnd and EndResult == player):
         return 1000
+    elif (IsEnd and EndResult == None):
+        return 0
+    elif (IsEnd):
+        return -1000
+    if CurrentDepth == MaxDepth:
+        return board.Heuristic(player)
+    
     value = -999999999
     Result = None
-    placeableSpaces = board.placeableSpaces()
-    for space in placeableSpaces:
+    placableSpaces = board.placableSpaces()
+    for space in placableSpaces:
         newBoard = copy.deepcopy(board)
         newBoard.PlacePiece(player,space)
+        IsEnd, EndResult, downList = board.CheckForWinner(player,(3,3))
+        if IsEnd and EndResult == player:
+            return space
         if player == 'x':
             ResultVal = MinValue(newBoard,'o',CurrentDepth+1,MaxDepth)
             if ResultVal > value:
-                value = ResultVal
-                Result = space
+                value = ResultVal       
         else:
             ResultVal = MinValue(newBoard,'x',CurrentDepth+1,MaxDepth)
             if ResultVal > value:
                 value = ResultVal
-                Result = space
-
-    return Result
+    return value
         
 def MinValue(board, player, CurrentDepth, MaxDepth):
-    if CurrentDepth == MaxDepth:
-        return board.heuristic(player)
-    IsEnd, EndResult = board.CheckForWinner(player,space)
-    if(IsEnd):
+    IsEnd, EndResult, downList = board.CheckForWinner(player,(3,3))
+    if(IsEnd and EndResult == player):
         return 1000
+    elif (IsEnd and EndResult == None):
+        return 0
+    elif (IsEnd):
+        return -1000
+    
+    if CurrentDepth == MaxDepth:
+        return board.Heuristic(player)
+    
     value = 999999999
     Result = None
-    placeableSpaces = board.placeableSpaces()
-    for space in placeableSpaces:
+    placableSpaces = board.placableSpaces()
+    for space in placableSpaces:
         newBoard = copy.deepcopy(board)
         newBoard.PlacePiece(player,space)
         if player == 'x':
@@ -574,7 +588,7 @@ def MinValue(board, player, CurrentDepth, MaxDepth):
             if ResultVal < value:
                 value = ResultVal
                 Result = space       
-    return Result
+    return value
 
 
 # function Minimax-Decision(state) returns an action
@@ -596,69 +610,82 @@ def MinValue(board, player, CurrentDepth, MaxDepth):
 def PlayGame(board, p1, p2):
     IsEnd = False
     EndResult = None
+    board.PlacePiece('x',(3,4))
+    board.PlacePiece('o',(3,3))
+    #board.printFloorLayout()
     while(1):
-        movement = p1.Move(board)
-        IsEnd, EndResult = board.CheckForWinner('x',movement)
+        board.printFloorLayout()
+        movement = p1.Move(board,2)
+        IsEnd, EndResult, lst = board.CheckForWinner('x',movement)
         if IsEnd:
             break
-        p2.Move(board)
-        IsEnd, EndResult = board.CheckForWinner('o',movement)
+        board.printFloorLayout()
+        print("\n")
+        #p2.Move(board,4)
+        x = input("row: ")
+        y = input("column: ")
+        board.PlacePiece('o',(int(x),int(y)))
+        IsEnd, EndResult, lst = board.CheckForWinner('o',movement)
         if IsEnd:
             break
-    if EndResult == "Draw":
+        print("\n")
+    if EndResult == None:
         print("Match was a draw")
     else:
         print(EndResult +" is the winner")
     return 0
 
 def main():
-    board = Board(rows=7,columns=7)
+    board = Board(rows=5,columns=6)    
+    player1 = Player((3,4),2,'x')
+    player2 = Player((3,3),4,'o')
+    PlayGame(board, player1, player2)
+
     # print(board.placableSpaces())
+    # # board.PlacePiece('o',(1,4))
+    # # board.PlacePiece('o',(1,2))
     # print(board.placableSpaces())
-    # board.printFloorLayout()
-    # for d in range(0,4):    
-    #     for i in range(0, board.rows):
-    #         for j in range(1, board.columns):
-    #                 board.PlacePiece('o', (i+j+d,i+j+d))
-    initial_vals = [(3,1)]  #, (4,1), (5,1), (5,2), (5,3) , (5,4)
-    for initial in initial_vals:
-        for i in range(1, board.rows):
-            new = (initial[0]-i, initial[1]+i)
-            board.PlacePiece('o', new)
+    # # board.printFloorLayout()
+    # # for d in range(0,4):    
+    # #     for i in range(0, board.rows):
+    # #         for j in range(1, board.columns):
+    # #                 board.PlacePiece('o', (i+j+d,i+j+d))
+    # initial_vals = [(3,1)]  #, (4,1), (5,1), (5,2), (5,3) , (5,4)
+    # for initial in initial_vals:
+    #     for i in range(1, board.rows):
+    #         new = (initial[0]-i, initial[1]+i)
+    #         board.PlacePiece('o', new)
 
 
-    initial_vals = [(4,2)]  #, (4,1), (5,1), (5,2), (5,3) , (5,4)
-    for initial in initial_vals:
-        for i in range(0, 3):
-            new = (abs(initial[0]-i-7), initial[1]+i)
-            board.PlacePiece('o', new)
+    # initial_vals = [(4,2)]  #, (4,1), (5,1), (5,2), (5,3) , (5,4)
+    # for initial in initial_vals:
+    #     for i in range(0, 3):
+    #         new = (abs(initial[0]-i-7), initial[1]+i)
+    #         board.PlacePiece('o', new)
 
-    board.PlacePiece('o',(1,4))
-    board.PlacePiece('o',(1,2))
+    # board.PlacePiece('o',(1,4))
+    # board.PlacePiece('o',(1,2))
 
-    # for i in range(0, board.rows):
-    #     new = (initial[0]+i, initial[1]+i)
-    #     board.PlacePiece('o', new)
+    # # for i in range(0, board.rows):
+    # #     new = (initial[0]+i, initial[1]+i)
+    # #     board.PlacePiece('o', new)
     
 
 
-    # for j in range(1,3):
-    #     board.PlacePiece('o', (1,j))
-    # for i in range(4,6):
-    #     board.PlacePiece('x', (1,i))    
-    print()
-    board.printFloorLayout()
-    place = (1,4)
-    # print(board.CheckForWinner('o',place ))
+    # # for j in range(1,3):
+    # #     board.PlacePiece('o', (1,j))
+    # # for i in range(4,6):
+    # #     board.PlacePiece('x', (1,i))    
+    # print()
+    # board.printFloorLayout()
+    # place = (1,4)
+    # # print(board.CheckForWinner('o',place ))
 
 
-    print(board.Heuristic('x'))
-    print("\n\n")
-    print(board.Heuristic('o'))
+    # print(board.Heuristic('x'))
+    # print("\n\n")
+    # print(board.Heuristic('o'))
 
-    # player1 = Player((3,4),2,True)
-    # player2 = Player((3,3),4, False)
-    # PlayGame(board, player1, player2)
 
 
     return 0
